@@ -897,8 +897,6 @@ fn test_syncing_check_functions() {
             .await;
         println!("{:?}", val);
 
-        #[allow(unused_variables)]
-        let val = web3.eth_get_latest_block().await;
-        //println!("{:?}", val);
-    });
+    let val = web3.xdai_get_latest_block().await;
+    assert!(val.is_err());
 }
