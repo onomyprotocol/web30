@@ -7,6 +7,7 @@ name = "web30"
 repository = "https://github.com/onomyprotocol/web30.git"
 version = "0.18.3"
 
+
 [dependencies]
 clarity = "0.5"
 futures = "0.3"
