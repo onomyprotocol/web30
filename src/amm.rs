@@ -242,7 +242,7 @@ impl Web3 {
             let _token_in_approval = self
                 .approve_erc20_transfers(
                     token_in,
-                    eth_private_key,
+                    &eth_private_key,
                     router,
                     wait_timeout,
                     options.clone(),
@@ -260,7 +260,7 @@ impl Web3 {
                 payload,
                 0u32.into(),
                 eth_address,
-                eth_private_key,
+                &eth_private_key,
                 options,
             )
             .await?;
@@ -401,7 +401,7 @@ impl Web3 {
                 payload,
                 amount.clone(),
                 eth_address,
-                eth_private_key,
+                &eth_private_key,
                 options,
             )
             .await?;
