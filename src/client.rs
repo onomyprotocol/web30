@@ -797,15 +797,9 @@ async fn test_transaction_count_response() {
     assert!(val > 0u32.into());
 }
 
-#[test]
-fn test_block_response() {
-    use actix::System;
-    let runner = System::new();
+#[tokio::test]
+async fn test_block_response() {
     let web3 = Web3::new("https://eth.althea.net", Duration::from_secs(5));
-    runner.block_on(async move {
-        let val = web3.eth_get_latest_block().await;
-        let val = val.expect("Actix failure");
-        assert!(val.number > 10u32.into());
 
     let val = web3.eth_get_latest_block().await;
     eprintln!("{:?}", val);
