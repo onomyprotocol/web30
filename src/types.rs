@@ -1,8 +1,7 @@
 use clarity::utils::{bytes_to_hex_str, hex_str_to_bytes};
-use clarity::Address;
-use num256::Uint256;
+use clarity::Uint256;
+use clarity::{u256, Address};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::str::FromStr;
 use std::{cmp::Ordering, ops::Deref};
 
 /// Serializes slice of data as "UNFORMATTED DATA" format required
@@ -127,7 +126,7 @@ impl Ord for TransactionResponse {
     /// number transactions without a block are greater than transactions with one and
     /// are sorted by nonce when in the same block or without a block.
     fn cmp(&self, other: &Self) -> Ordering {
-        match (self.block_number.clone(), other.block_number.clone()) {
+        match (self.block_number, other.block_number) {
             (Some(self_block), Some(other_block)) => {
                 if self_block != other_block {
                     self_block.cmp(&other_block)
@@ -184,7 +183,7 @@ pub struct TransactionRequest {
     pub nonce: Option<UnpaddedHex>,
 }
 
-#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq)]
 pub struct UnpaddedHex(pub Uint256);
 
 impl Serialize for UnpaddedHex {
@@ -192,7 +191,7 @@ impl Serialize for UnpaddedHex {
     where
         S: Serializer,
     {
-        serializer.serialize_str(&format!("{:#x}", *self.0))
+        serializer.serialize_str(&self.0.to_hex_string())
     }
 }
 
@@ -204,7 +203,7 @@ impl From<Uint256> for UnpaddedHex {
 
 impl From<u64> for UnpaddedHex {
     fn from(v: u64) -> Self {
-        UnpaddedHex(v.into())
+        UnpaddedHex(Uint256::from_u64(v))
     }
 }
 
@@ -241,7 +240,7 @@ pub struct Block {
     pub receipts_root: Uint256,
     // Geth also does not include this field.
     #[serde(rename = "sealFields")]
-    pub seal_fields: Option<Vec<Uint256>>,
+    pub seal_fields: Option<Vec<String>>,
     #[serde(rename = "sha3Uncles")]
     pub sha3_uncles: Uint256,
     pub size: Uint256,
@@ -284,7 +283,7 @@ pub struct XdaiBlock {
     #[serde(rename = "receiptsRoot")]
     pub receipts_root: Uint256,
     #[serde(rename = "sealFields")]
-    pub seal_fields: Vec<Uint256>,
+    pub seal_fields: Vec<String>,
     #[serde(rename = "sha3Uncles")]
     pub sha3_uncles: Uint256,
     pub signature: String,
@@ -334,7 +333,7 @@ pub struct ConciseBlock {
     pub receipts_root: Uint256,
     // Geth also does not include this field.
     #[serde(rename = "sealFields")]
-    pub seal_fields: Option<Vec<Uint256>>,
+    pub seal_fields: Option<Vec<String>>,
     #[serde(rename = "sha3Uncles")]
     pub sha3_uncles: Uint256,
     pub size: Uint256,
@@ -377,7 +376,7 @@ pub struct ConciseXdaiBlock {
     #[serde(rename = "receiptsRoot")]
     pub receipts_root: Uint256,
     #[serde(rename = "sealFields")]
-    pub seal_fields: Vec<Uint256>,
+    pub seal_fields: Vec<String>,
     #[serde(rename = "sha3Uncles")]
     pub sha3_uncles: Uint256,
     pub signature: String,
@@ -410,9 +409,9 @@ where
     D: Deserializer<'de>,
 {
     let s: String = String::deserialize(deserializer)?;
-    match Uint256::from_str(&s) {
+    match Uint256::from_dec_or_hex_str_restricted(&s) {
         Ok(val) => Ok(val),
-        Err(_e) => Ok(0u32.into()),
+        Err(_) => Ok(u256!(0)),
     }
 }
 
@@ -445,11 +444,8 @@ mod tests {
         env_logger::init();
 
         let web3 = Web3::new("https://eth.althea.net", Duration::from_secs(5));
-        let block_number: Uint256 = 10750715u32.into();
-        let res = web3
-            .eth_get_block_by_number(block_number.clone())
-            .await
-            .unwrap();
+        let block_number = u256!(10750715);
+        let res = web3.eth_get_block_by_number(block_number).await.unwrap();
 
         assert_eq!(block_number, res.number);
     }

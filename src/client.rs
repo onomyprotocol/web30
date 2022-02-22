@@ -9,9 +9,8 @@ use crate::jsonrpc::error::Web3Error;
 use crate::types::{Block, Log, NewFilter, SyncingStatus, TransactionRequest, TransactionResponse};
 use crate::types::{ConciseBlock, ConciseXdaiBlock, Data, SendTxOption, XdaiBlock};
 use clarity::utils::bytes_to_hex_str;
+use clarity::{u256, Uint256};
 use clarity::{Address, PrivateKey, Transaction};
-use num::ToPrimitive;
-use num256::Uint256;
 use std::cmp::max;
 use std::{cmp::min, time::Duration};
 use std::{sync::Arc, time::Instant};
@@ -473,42 +472,60 @@ impl Web3 {
             gp
         } else {
             let gas_price = self.eth_gas_price().await?;
-            let f32_gas = gas_price.to_u128();
-            if let Some(v) = f32_gas {
-                // convert to f32, multiply, then convert back, this
+            if gas_price.sig_bits() <= 128 {
+                // convert to f64, multiply, then convert back, this
                 // will be lossy but you want an exact price you can set it
-                ((v as f32 * gas_price_multiplier) as u128).into()
+                Uint256::from_u128(
+                    (gas_price.resize_to_u128() as f64 * (gas_price_multiplier as f64)) as u128,
+                )
             } else {
                 // gas price is insanely high, best effort rounding
-                // perhaps we should panic here
-                gas_price * (gas_price_multiplier.round() as u128).into()
+                //gas_price = gas_price
+                //    .checked_mul(Uint256::from_u128(gas_price_multiplier.round() as u128))
+                //    .unwrap()
+
+                // let's return an error because it should not be possible,
+                // the total supply of most chains is in the 10^26 range and u128 fits 10^38
+                return Err(Web3Error::BadInput(
+                    "the gas price is higher than should be possible".to_owned(),
+                ));
             }
         };
 
         let mut gas_limit = if let Some(gl) = gas_limit {
             gl
         } else {
-            let gas = self
-                .simulated_gas_price_and_limit(our_balance.clone())
-                .await?;
+            let gas = self.simulated_gas_price_and_limit(our_balance).await?;
             self.eth_estimate_gas(TransactionRequest {
                 from: Some(own_address),
                 to: to_address,
-                nonce: Some(nonce.clone().into()),
+                nonce: Some(nonce.into()),
                 gas_price: Some(gas.price.into()),
                 gas: Some(gas.limit.into()),
-                value: Some(value.clone().into()),
+                value: Some(value.into()),
                 data: Some(data.clone().into()),
             })
             .await?
         };
 
         // multiply limit by gasLimitMultiplier
-        let gas_limit_128 = gas_limit.to_u128();
-        if let Some(v) = gas_limit_128 {
-            gas_limit = ((v as f32 * gas_limit_multiplier) as u128).into()
+        if gas_limit.sig_bits() <= 128 {
+            // convert to f64, multiply, then convert back, this
+            // will be lossy but you want an exact price you can set it
+            gas_limit = Uint256::from_u128(
+                (gas_limit.resize_to_u128() as f64 * (gas_limit_multiplier as f64)) as u128,
+            );
         } else {
-            gas_limit *= (gas_limit_multiplier.round() as u128).into()
+            // gas price is insanely high, best effort rounding
+            //gas_limit = gas_limit
+            //    .checked_mul(Uint256::from_u128(gas_limit_multiplier.round() as u128))
+            //    .unwrap()
+
+            // let's return an error because it should not be possible,
+            // the total supply of most chains is in the 10^26 range and u128 fits 10^38
+            return Err(Web3Error::BadInput(
+                "the gas price is higher than should be possible".to_owned(),
+            ));
         }
 
         let network_id = if let Some(ni) = network_id {
@@ -521,10 +538,10 @@ impl Web3 {
         // be valid, we simply don't have the the funds to pay the full gas amount we are promising
         // this segment computes either the highest valid gas price we can pay or in the post-london
         // chain case errors if we can't meet the minimum fee
-        if gas_price.clone() * gas_limit.clone() > our_balance {
+        if gas_price.checked_mul(gas_limit).unwrap() > our_balance {
             let base_fee_per_gas = self.get_base_fee_per_gas().await?;
             if let Some(base_fee_per_gas) = base_fee_per_gas {
-                if base_fee_per_gas.clone() * gas_limit.clone() > our_balance {
+                if base_fee_per_gas.checked_mul(gas_limit).unwrap() > our_balance {
                     return Err(Web3Error::InsufficientGas {
                         balance: our_balance,
                         base_gas: base_fee_per_gas,
@@ -534,7 +551,7 @@ impl Web3 {
             }
             // this will give some value >= base_fee_per_gas * gas_limit
             // in post-london and some non zero value in pre-london
-            gas_price = our_balance / gas_limit.clone();
+            gas_price = our_balance.divide(gas_limit).unwrap().0;
         }
 
         let transaction = Transaction {
@@ -583,9 +600,9 @@ impl Web3 {
             from: Some(own_address),
             to: contract_address,
             gas: Some(gas.limit.into()),
-            nonce: Some(nonce.clone().into()),
+            nonce: Some(nonce.into()),
             gas_price: Some(gas.price.into()),
-            value: Some(value.clone().into()),
+            value: Some(value.into()),
             data: Some(data.clone().into()),
         };
 
@@ -619,21 +636,21 @@ impl Web3 {
         let start = Instant::now();
         loop {
             delay_for(Duration::from_secs(1)).await;
-            match self.eth_get_transaction_by_hash(tx_hash.clone()).await {
+            match self.eth_get_transaction_by_hash(tx_hash).await {
                 Ok(maybe_transaction) => {
                     if let Some(transaction) = maybe_transaction {
                         // if no wait time is specified and the tx is in a block return right away
-                        if blocks_to_wait.clone().is_none() && transaction.block_number.is_some() {
+                        if blocks_to_wait.is_none() && transaction.block_number.is_some() {
                             return Ok(transaction);
                         }
                         // One the tx is in a block we start waiting here
                         else if let (Some(blocks_to_wait), Some(tx_block)) =
-                            (blocks_to_wait.clone(), transaction.block_number.clone())
+                            (blocks_to_wait, transaction.block_number)
                         {
                             let current_block = self.eth_block_number().await?;
                             // we check for underflow, which is possible on testnets
                             if current_block > blocks_to_wait
-                                && current_block - blocks_to_wait >= tx_block
+                                && current_block.checked_sub(blocks_to_wait).unwrap() >= tx_block
                             {
                                 return Ok(transaction);
                             }
@@ -684,9 +701,12 @@ impl Web3 {
             // from causing failure
             Some(base_gas) => base_gas,
             // pre London
-            None => 1u8.into(),
+            None => u256!(1),
         };
-        let limit = min(GAS_LIMIT.into(), balance / price.clone());
+        let limit = min(
+            Uint256::from_u128(GAS_LIMIT),
+            balance.divide(price).unwrap().0,
+        );
         Ok(SimulatedGas { limit, price })
     }
 
@@ -732,7 +752,7 @@ impl Web3 {
         let start = Instant::now();
         let mut last_height: Option<Uint256> = None;
         while Instant::now() - start < timeout {
-            match (self.eth_block_number().await, last_height.clone()) {
+            match (self.eth_block_number().await, last_height) {
                 (Ok(n), None) => last_height = Some(n),
                 (Ok(block_height), Some(last_height)) => {
                     if block_height > last_height {
@@ -746,6 +766,7 @@ impl Web3 {
         Err(Web3Error::NoBlockProduced { time: timeout })
     }
 }
+
 struct SimulatedGas {
     limit: Uint256,
     price: Uint256,
@@ -756,11 +777,8 @@ async fn test_chain_id() {
     let web3 = Web3::new("https://eth.althea.net", Duration::from_secs(5));
     let web3_xdai = Web3::new("https://dai.althea.net", Duration::from_secs(5));
 
-    assert_eq!(Some(Uint256::from(1u8)), web3.eth_chainid().await.unwrap());
-    assert_eq!(
-        Some(Uint256::from(100u8)),
-        web3_xdai.eth_chainid().await.unwrap()
-    );
+    assert_eq!(Some(u256!(1)), web3.eth_chainid().await.unwrap());
+    assert_eq!(Some(u256!(100)), web3_xdai.eth_chainid().await.unwrap());
 }
 
 #[tokio::test]
@@ -775,14 +793,12 @@ async fn test_net_version() {
 #[tokio::test]
 async fn test_complex_response() {
     let web3 = Web3::new("https://eth.althea.net", Duration::from_secs(5));
-    let txid1 = "0x8b9ef028f99016cd3cb8d4168df7491a0bf44f08b678d37f63ab61e782c500ab"
-        .parse()
-        .unwrap();
+    let txid1 = u256!(0x8b9ef028f99016cd3cb8d4168df7491a0bf44f08b678d37f63ab61e782c500ab);
 
     let val = web3.eth_get_transaction_by_hash(txid1).await;
     let val = val.expect("tokio failure");
     let response = val.expect("Failed to parse transaction response");
-    assert!(response.block_number.unwrap() > 10u32.into());
+    assert!(response.block_number.unwrap() > u256!(10));
 }
 
 #[tokio::test]
@@ -794,7 +810,7 @@ async fn test_transaction_count_response() {
 
     let val = web3.eth_get_transaction_count(address).await;
     let val = val.unwrap();
-    assert!(val > 0u32.into());
+    assert!(val > u256!(0));
 }
 
 #[tokio::test]
@@ -804,11 +820,11 @@ async fn test_block_response() {
     let val = web3.eth_get_latest_block().await;
     eprintln!("{:?}", val);
     let val = val.expect("tokio failure");
-    assert!(val.number > 10u32.into());
+    assert!(val.number > u256!(10));
 
     let val = web3.eth_get_latest_block_full().await;
     let val = val.expect("tokio failure");
-    assert!(val.number > 10u32.into());
+    assert!(val.number > u256!(10));
 }
 
 #[tokio::test]
@@ -817,7 +833,7 @@ async fn test_dai_block_response() {
 
     let val = web3.xdai_get_latest_block().await;
     let val = val.expect("tokio failure");
-    assert!(val.number > 10u32.into());
+    assert!(val.number > u256!(10));
 }
 
 #[tokio::test]
