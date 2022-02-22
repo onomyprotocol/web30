@@ -2,6 +2,7 @@ use std::time::Duration;
 
 // Performs interactions with AMMs (Automated Market Makers) on ethereum
 use crate::{client::Web3, jsonrpc::error::Web3Error, types::SendTxOption};
+use clarity::u256;
 use clarity::utils::display_uint256_as_address;
 use clarity::{
     abi::{encode_call, Token},
@@ -78,14 +79,14 @@ impl Web3 {
         let quoter = uniswap_quoter.unwrap_or(*UNISWAP_QUOTER_ADDRESS);
 
         let fee_uint24 = fee_uint24.unwrap_or_else(|| 500u32.into());
-        if bad_fee(&fee_uint24) {
+        if bad_fee(fee_uint24) {
             return Err(Web3Error::BadInput(
                 "Bad fee input to swap price - value too large for uint24".to_string(),
             ));
         }
 
         let sqrt_price_limit_x96_uint160 = sqrt_price_limit_x96_uint160.unwrap_or_default();
-        if bad_sqrt_price_limit(&sqrt_price_limit_x96_uint160) {
+        if bad_sqrt_price_limit(sqrt_price_limit_x96_uint160) {
             return Err(Web3Error::BadInput(
                 "Bad sqrt_price_limit_x96 input to swap price - value too large for uint160"
                     .to_string(),
@@ -116,7 +117,8 @@ impl Web3 {
                     "Bad response from swap price".to_string(),
                 ))
             }
-        }))
+        })
+        .unwrap())
     }
 
     /// Performs an exact input single pool swap via Uniswap v3, exchanging `amount` of `token_in` for `token_out`
@@ -173,14 +175,14 @@ impl Web3 {
         wait_timeout: Option<Duration>,
     ) -> Result<Uint256, Web3Error> {
         let fee_uint24 = fee_uint24.unwrap_or_else(|| 3000u16.into());
-        if bad_fee(&fee_uint24) {
+        if bad_fee(fee_uint24) {
             return Err(Web3Error::BadInput(
                 "Bad fee input to swap_uniswap - value too large for uint24".to_string(),
             ));
         }
 
         let sqrt_price_limit_x96_uint160 = sqrt_price_limit_x96_uint160.unwrap_or_default();
-        if bad_sqrt_price_limit(&sqrt_price_limit_x96_uint160) {
+        if bad_sqrt_price_limit(sqrt_price_limit_x96_uint160) {
             return Err(Web3Error::BadInput(
                 "Bad sqrt_price_limit_x96 input to swap_uniswap - value too large for uint160"
                     .to_string(),
@@ -191,7 +193,13 @@ impl Web3 {
         let router = uniswap_router.unwrap_or(*UNISWAP_ROUTER_ADDRESS);
         let deadline = match deadline {
             // Default to latest block + 10 minutes
-            None => self.eth_get_latest_block().await.unwrap().timestamp + (10u64 * 60u64).into(),
+            None => self
+                .eth_get_latest_block()
+                .await
+                .unwrap()
+                .timestamp
+                .checked_add(u256!(600))
+                .unwrap(),
             Some(val) => val,
         };
         let amount_out_min = amount_out_min.unwrap_or_default();
@@ -249,7 +257,7 @@ impl Web3 {
                 )
                 .await?;
             if wait_timeout.is_none() {
-                options.push(SendTxOption::Nonce(nonce + 1u8.into()));
+                options.push(SendTxOption::Nonce(nonce.checked_add(u256!(1)).unwrap()));
             }
         }
 
@@ -336,14 +344,14 @@ impl Web3 {
     ) -> Result<Uint256, Web3Error> {
         let token_in = *WETH_CONTRACT_ADDRESS; // Uniswap requires WETH to be one of the swap tokens for ETH swaps
         let fee_uint24 = fee_uint24.unwrap_or_else(|| 3000u16.into());
-        if bad_fee(&fee_uint24) {
+        if bad_fee(fee_uint24) {
             return Err(Web3Error::BadInput(
                 "Bad fee input to swap_uniswap_eth_in - value too large for uint24".to_string(),
             ));
         }
 
         let sqrt_price_limit_x96_uint160 = sqrt_price_limit_x96_uint160.unwrap_or_default();
-        if bad_sqrt_price_limit(&sqrt_price_limit_x96_uint160) {
+        if bad_sqrt_price_limit(sqrt_price_limit_x96_uint160) {
             return Err(Web3Error::BadInput(
                 "Bad sqrt_price_limit_x96 input to swap_uniswap_eth_in - value too large for uint160"
                     .to_string(),
@@ -354,7 +362,13 @@ impl Web3 {
         let router = uniswap_router.unwrap_or(*UNISWAP_ROUTER_ADDRESS);
         let deadline = match deadline {
             // Default to latest block + 10 minutes
-            None => self.eth_get_latest_block().await.unwrap().timestamp + (10u64 * 60u64).into(),
+            None => self
+                .eth_get_latest_block()
+                .await
+                .unwrap()
+                .timestamp
+                .checked_add(u256!(600))
+                .unwrap(),
             Some(val) => val,
         };
         let amount_out_min = amount_out_min.unwrap_or_default();
@@ -433,13 +447,13 @@ fn options_contains_glm(options: &[SendTxOption]) -> bool {
 }
 
 // Checks that the input fee value is within the limits of uint24
-fn bad_fee(fee: &Uint256) -> bool {
-    *fee > *TT24M1
+fn bad_fee(fee: Uint256) -> bool {
+    fee > TT24M1
 }
 
 // Checks that the input sqrt_price_limit value is within the limits of uint160
-fn bad_sqrt_price_limit(sqrt_price_limit: &Uint256) -> bool {
-    *sqrt_price_limit > *TT160M1
+fn bad_sqrt_price_limit(sqrt_price_limit: Uint256) -> bool {
+    sqrt_price_limit > TT160M1
 }
 
 /// Computes the sqrt price of a pool given token_1's liquidity and token_0's liquidity
@@ -455,11 +469,16 @@ pub fn uniswap_sqrt_price(amount_1: Uint256, amount_0: Uint256) -> Uint256 {
     //   const ratioX192 = JSBI.divide(numerator, denominator)
     //   return sqrt(ratioX192)
 
-    let numerator: BigUint = amount_1.0 << 192;
-    let denominator: BigUint = amount_0.0;
+    let numerator = BigUint::new(amount_1.to_u32_array().into()) << 192i64;
+    let denominator = BigUint::new(amount_0.to_u32_array().into());
     let ratio_x192 = numerator / denominator;
-    Uint256(BigUint::sqrt(&ratio_x192))
+    let mut res = [0u64; 4];
+    let digits = BigUint::sqrt(&ratio_x192).to_u64_digits();
+    // this is safe from panics because `sqrt(2^(256 + 192) / 1) == 2^224` which fits in `U256`
+    res[..digits.len()].copy_from_slice(&digits);
+    Uint256::from_u64_array(res)
 }
+
 #[ignore]
 #[tokio::test]
 async fn get_uniswap_price_test() {
@@ -537,7 +556,7 @@ async fn swap_hardhat_test() {
     let sqrt_price_limit_x96_uint160: Uint256 = 0u8.into();
 
     let block = web3.eth_get_latest_block().await.unwrap();
-    let deadline = block.timestamp + (10u32 * 60u32 * 100000u32).into();
+    let deadline = block.timestamp.checked_add(Uint256::from_u64(10u64 * 60u64 * 100000u64)).unwrap();
 
     let success = web3
         .wrap_eth(amount.clone(), miner_private_key, None, None)
@@ -659,7 +678,7 @@ async fn swap_hardhat_eth_in_test() {
     let sqrt_price_limit_x96_uint160: Uint256 = 0u8.into();
 
     let block = web3.eth_get_latest_block().await.unwrap();
-    let deadline = block.timestamp + (10u32 * 60u32 * 100000u32).into();
+    let deadline = block.timestamp.checked_add(Uint256::from_u64(10u64 * 60u64 * 100000u64)).unwrap();
 
     let initial_eth = web3.eth_get_balance(miner_address).await.unwrap();
     let initial_weth = web3

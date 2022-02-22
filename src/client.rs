@@ -9,9 +9,8 @@ use crate::jsonrpc::error::Web3Error;
 use crate::types::{Block, Log, NewFilter, SyncingStatus, TransactionRequest, TransactionResponse};
 use crate::types::{ConciseBlock, ConciseXdaiBlock, Data, SendTxOption, XdaiBlock};
 use clarity::utils::bytes_to_hex_str;
+use clarity::Uint256;
 use clarity::{Address, PrivateKey, Transaction};
-use num::ToPrimitive;
-use num256::Uint256;
 use std::cmp::max;
 use std::{cmp::min, time::Duration};
 use std::{sync::Arc, time::Instant};
@@ -473,15 +472,18 @@ impl Web3 {
             gp
         } else {
             let gas_price = self.eth_gas_price().await?;
-            let f32_gas = gas_price.to_u128();
-            if let Some(v) = f32_gas {
+            if gas_price.sig_bits() <= 128 {
                 // convert to f32, multiply, then convert back, this
                 // will be lossy but you want an exact price you can set it
-                ((v as f32 * gas_price_multiplier) as u128).into()
+                Uint256::from_u128(
+                    (gas_price.resize_to_u128() as f64 * (gas_price_multiplier as f64)) as u128,
+                )
             } else {
                 // gas price is insanely high, best effort rounding
                 // perhaps we should panic here
-                gas_price * (gas_price_multiplier.round() as u128).into()
+                gas_price
+                    .checked_mul(Uint256::from_u128(gas_price_multiplier.round() as u128))
+                    .unwrap()
             }
         };
 
@@ -504,11 +506,18 @@ impl Web3 {
         };
 
         // multiply limit by gasLimitMultiplier
-        let gas_limit_128 = gas_limit.to_u128();
-        if let Some(v) = gas_limit_128 {
-            gas_limit = ((v as f32 * gas_limit_multiplier) as u128).into()
+        if gas_limit.sig_bits() <= 128 {
+            // convert to f32, multiply, then convert back, this
+            // will be lossy but you want an exact price you can set it
+            gas_limit = Uint256::from_u128(
+                (gas_limit.resize_to_u128() as f64 * (gas_limit_multiplier as f64)) as u128,
+            );
         } else {
-            gas_limit *= (gas_limit_multiplier.round() as u128).into()
+            // gas price is insanely high, best effort rounding
+            // perhaps we should panic here
+            gas_limit = gas_limit
+                .checked_mul(Uint256::from_u128(gas_limit_multiplier.round() as u128))
+                .unwrap()
         }
 
         let network_id = if let Some(ni) = network_id {

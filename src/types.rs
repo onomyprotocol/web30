@@ -1,6 +1,6 @@
 use clarity::utils::{bytes_to_hex_str, hex_str_to_bytes};
 use clarity::Address;
-use num256::Uint256;
+use clarity::Uint256;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::str::FromStr;
 use std::{cmp::Ordering, ops::Deref};
@@ -184,7 +184,7 @@ pub struct TransactionRequest {
     pub nonce: Option<UnpaddedHex>,
 }
 
-#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq)]
 pub struct UnpaddedHex(pub Uint256);
 
 impl Serialize for UnpaddedHex {
@@ -192,7 +192,7 @@ impl Serialize for UnpaddedHex {
     where
         S: Serializer,
     {
-        serializer.serialize_str(&format!("{:#x}", *self.0))
+        serializer.serialize_str(&self.0.to_hex_string())
     }
 }
 

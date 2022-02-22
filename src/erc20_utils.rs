@@ -3,7 +3,6 @@ use crate::jsonrpc::error::Web3Error;
 use crate::{client::Web3, types::SendTxOption};
 use clarity::{abi::encode_call, PrivateKey as EthPrivateKey};
 use clarity::{Address, Uint256};
-use num::Bounded;
 use std::time::Duration;
 use tokio::time::timeout as future_timeout;
 
@@ -36,11 +35,12 @@ impl Web3 {
                     "erc20 allowance(address, address) failed".to_string(),
                 ))
             }
-        });
+        })
+        .unwrap();
 
         // Check if the allowance remaining is greater than half of a Uint256- it's as good
         // a test as any.
-        Ok(allowance > (Uint256::max_value() / 2u32.into()))
+        Ok(allowance > Uint256::max_value().shr1())
     }
 
     /// Approves a given contract to spend erc20 funds from the given address from the erc20 contract provided.
@@ -165,7 +165,8 @@ impl Web3 {
                     "Bad response from ERC20 balance".to_string(),
                 ))
             }
-        }))
+        })
+        .unwrap())
     }
 
     pub async fn get_erc20_name(
@@ -233,7 +234,8 @@ impl Web3 {
                     "Bad response from ERC20 decimals".to_string(),
                 ))
             }
-        }))
+        })
+        .unwrap())
     }
 
     pub async fn get_erc20_supply(
@@ -253,7 +255,8 @@ impl Web3 {
                     "Bad response from ERC20 Total Supply".to_string(),
                 ))
             }
-        }))
+        })
+        .unwrap())
     }
 }
 
