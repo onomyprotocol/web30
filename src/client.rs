@@ -490,16 +490,14 @@ impl Web3 {
         let mut gas_limit = if let Some(gl) = gas_limit {
             gl
         } else {
-            let gas = self
-                .simulated_gas_price_and_limit(our_balance.clone())
-                .await?;
+            let gas = self.simulated_gas_price_and_limit(our_balance).await?;
             self.eth_estimate_gas(TransactionRequest {
                 from: Some(own_address),
                 to: to_address,
-                nonce: Some(nonce.clone().into()),
+                nonce: Some(nonce.into()),
                 gas_price: Some(gas.price.into()),
                 gas: Some(gas.limit.into()),
-                value: Some(value.clone().into()),
+                value: Some(value.into()),
                 data: Some(data.clone().into()),
             })
             .await?
@@ -592,9 +590,9 @@ impl Web3 {
             from: Some(own_address),
             to: contract_address,
             gas: Some(gas.limit.into()),
-            nonce: Some(nonce.clone().into()),
+            nonce: Some(nonce.into()),
             gas_price: Some(gas.price.into()),
-            value: Some(value.clone().into()),
+            value: Some(value.into()),
             data: Some(data.clone().into()),
         };
 
@@ -628,16 +626,16 @@ impl Web3 {
         let start = Instant::now();
         loop {
             delay_for(Duration::from_secs(1)).await;
-            match self.eth_get_transaction_by_hash(tx_hash.clone()).await {
+            match self.eth_get_transaction_by_hash(tx_hash).await {
                 Ok(maybe_transaction) => {
                     if let Some(transaction) = maybe_transaction {
                         // if no wait time is specified and the tx is in a block return right away
-                        if blocks_to_wait.clone().is_none() && transaction.block_number.is_some() {
+                        if blocks_to_wait.is_none() && transaction.block_number.is_some() {
                             return Ok(transaction);
                         }
                         // One the tx is in a block we start waiting here
                         else if let (Some(blocks_to_wait), Some(tx_block)) =
-                            (blocks_to_wait.clone(), transaction.block_number.clone())
+                            (blocks_to_wait, transaction.block_number)
                         {
                             let current_block = self.eth_block_number().await?;
                             // we check for underflow, which is possible on testnets
@@ -744,7 +742,7 @@ impl Web3 {
         let start = Instant::now();
         let mut last_height: Option<Uint256> = None;
         while Instant::now() - start < timeout {
-            match (self.eth_block_number().await, last_height.clone()) {
+            match (self.eth_block_number().await, last_height) {
                 (Ok(n), None) => last_height = Some(n),
                 (Ok(block_height), Some(last_height)) => {
                     if block_height > last_height {
@@ -758,6 +756,7 @@ impl Web3 {
         Err(Web3Error::NoBlockProduced { time: timeout })
     }
 }
+
 struct SimulatedGas {
     limit: Uint256,
     price: Uint256,

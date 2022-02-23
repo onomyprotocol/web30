@@ -126,7 +126,7 @@ impl Ord for TransactionResponse {
     /// number transactions without a block are greater than transactions with one and
     /// are sorted by nonce when in the same block or without a block.
     fn cmp(&self, other: &Self) -> Ordering {
-        match (self.block_number.clone(), other.block_number.clone()) {
+        match (self.block_number, other.block_number) {
             (Some(self_block), Some(other_block)) => {
                 if self_block != other_block {
                     self_block.cmp(&other_block)
@@ -445,10 +445,7 @@ mod tests {
 
         let web3 = Web3::new("https://eth.althea.net", Duration::from_secs(5));
         let block_number = u256!(10750715);
-        let res = web3
-            .eth_get_block_by_number(block_number.clone())
-            .await
-            .unwrap();
+        let res = web3.eth_get_block_by_number(block_number).await.unwrap();
 
         assert_eq!(block_number, res.number);
     }

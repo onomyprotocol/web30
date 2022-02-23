@@ -275,14 +275,10 @@ impl Web3 {
             .await?;
         debug!(
             "txid for uniswap swap is {}",
-            display_uint256_as_address(txid.clone())
+            display_uint256_as_address(txid)
         );
         if let Some(timeout) = wait_timeout {
-            future_timeout(
-                timeout,
-                self.wait_for_transaction(txid.clone(), timeout, None),
-            )
-            .await??;
+            future_timeout(timeout, self.wait_for_transaction(txid, timeout, None)).await??;
         }
 
         Ok(txid)
@@ -390,7 +386,7 @@ impl Web3 {
             fee_uint24.into(),
             eth_address.into(),
             deadline.into(),
-            amount.clone().into(),
+            amount.into(),
             amount_out_min.into(),
             sqrt_price_limit_x96_uint160.into(),
         ];
@@ -415,7 +411,7 @@ impl Web3 {
             .send_transaction(
                 router,
                 payload,
-                amount.clone(),
+                amount,
                 eth_address,
                 &eth_private_key,
                 options,
@@ -423,14 +419,10 @@ impl Web3 {
             .await?;
         debug!(
             "txid for uniswap swap is {}",
-            display_uint256_as_address(txid.clone())
+            display_uint256_as_address(txid)
         );
         if let Some(timeout) = wait_timeout {
-            future_timeout(
-                timeout,
-                self.wait_for_transaction(txid.clone(), timeout, None),
-            )
-            .await??;
+            future_timeout(timeout, self.wait_for_transaction(txid, timeout, None)).await??;
         }
         Ok(txid)
     }
@@ -500,9 +492,9 @@ async fn get_uniswap_price_test() {
             caller_address,
             *WETH_CONTRACT_ADDRESS,
             *DAI_CONTRACT_ADDRESS,
-            Some(fee.clone()),
-            amount.clone(),
-            Some(sqrt_price_limit_x96_uint160.clone()),
+            Some(fee),
+            amount,
+            Some(sqrt_price_limit_x96_uint160),
             None,
         )
         .await;
@@ -514,7 +506,7 @@ async fn get_uniswap_price_test() {
             caller_address,
             *DAI_CONTRACT_ADDRESS,
             *WETH_CONTRACT_ADDRESS,
-            Some(fee.clone()),
+            Some(fee),
             weth2dai,
             Some(sqrt_price_limit_x96_uint160),
             None,
@@ -563,9 +555,7 @@ async fn swap_hardhat_test() {
         .checked_add(Uint256::from_u64(10u64 * 60u64 * 100000u64))
         .unwrap();
 
-    let success = web3
-        .wrap_eth(amount.clone(), miner_private_key, None, None)
-        .await;
+    let success = web3.wrap_eth(amount, miner_private_key, None, None).await;
     if let Ok(b) = success {
         info!("Wrapped eth: {}", b);
     } else {
@@ -590,11 +580,11 @@ async fn swap_hardhat_test() {
             miner_private_key,
             *WETH_CONTRACT_ADDRESS,
             *DAI_CONTRACT_ADDRESS,
-            Some(fee.clone()),
-            amount.clone(),
-            Some(deadline.clone()),
-            Some(amount_out_min.clone()),
-            Some(sqrt_price_limit_x96_uint160.clone()),
+            Some(fee),
+            amount,
+            Some(deadline),
+            Some(amount_out_min),
+            Some(sqrt_price_limit_x96_uint160),
             None,
             None,
             None,
@@ -623,11 +613,11 @@ async fn swap_hardhat_test() {
             miner_private_key,
             *DAI_CONTRACT_ADDRESS,
             *WETH_CONTRACT_ADDRESS,
-            Some(fee.clone()),
-            dai_gained.clone(),
-            Some(deadline.clone()),
-            Some(amount_out_min.clone()),
-            Some(sqrt_price_limit_x96_uint160.clone()),
+            Some(fee),
+            dai_gained,
+            Some(deadline),
+            Some(amount_out_min),
+            Some(sqrt_price_limit_x96_uint160),
             None,
             None,
             None,
@@ -711,11 +701,11 @@ async fn swap_hardhat_eth_in_test() {
         .swap_uniswap_eth_in(
             miner_private_key,
             *DAI_CONTRACT_ADDRESS,
-            Some(fee.clone()),
-            amount.clone(),
-            Some(deadline.clone()),
-            Some(amount_out_min.clone()),
-            Some(sqrt_price_limit_x96_uint160.clone()),
+            Some(fee),
+            amount,
+            Some(deadline),
+            Some(amount_out_min),
+            Some(sqrt_price_limit_x96_uint160),
             None,
             None,
             None,
@@ -744,16 +734,12 @@ async fn swap_hardhat_eth_in_test() {
     let two_k_dai = Uint256::from_u128(2000 * 1_000_000_000_000_000_000);
     let one_eth = Uint256::from_u128(1_000_000_000_000_000_000);
     assert!(
-        dai_gained > two_k_dai.into(),
+        dai_gained > two_k_dai,
         "dai_gained = {} <= 2000 * 10^18",
         dai_gained
     );
     let eth_lost = initial_eth.checked_sub(final_eth).unwrap();
-    assert!(
-        eth_lost > one_eth.into(),
-        "eth_lost = {} <= 1 * 10^18",
-        eth_lost
-    );
+    assert!(eth_lost > one_eth, "eth_lost = {} <= 1 * 10^18", eth_lost);
 
     assert!(
         final_weth == initial_weth,
