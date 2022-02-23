@@ -18,7 +18,7 @@ serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
 tokio = { version = "1.4", features = ["macros", "time"] }
-u64_array_bigints = { git = "https://github.com/AaronKutch/u64_array_bigints.git", rev = "9febbe7e31edefe94cd49890660f7823922d4da4" }
+u64_array_bigints = { git = "https://github.com/AaronKutch/u64_array_bigints.git", rev = "3637379aefb03d124f0a902ea7c9e4e64f7ddba7" }
 
 [dev-dependencies]
 env_logger = "0.9"
