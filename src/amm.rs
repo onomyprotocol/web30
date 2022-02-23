@@ -78,7 +78,7 @@ impl Web3 {
     ) -> Result<Uint256, Web3Error> {
         let quoter = uniswap_quoter.unwrap_or(*UNISWAP_QUOTER_ADDRESS);
 
-        let fee_uint24 = fee_uint24.unwrap_or(u256!(500));
+        let fee_uint24 = fee_uint24.unwrap_or_else(|| u256!(500));
         if bad_fee(fee_uint24) {
             return Err(Web3Error::BadInput(
                 "Bad fee input to swap price - value too large for uint24".to_string(),
