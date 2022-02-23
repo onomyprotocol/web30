@@ -1,8 +1,8 @@
 use crate::amm::WETH_CONTRACT_ADDRESS;
 use crate::{client::Web3, jsonrpc::error::Web3Error};
 use clarity::abi::Token;
-use clarity::Address;
 use clarity::{abi::encode_call, PrivateKey, Uint256};
+use clarity::{u256, Address};
 use std::time::Duration;
 use tokio::time::timeout as future_timeout;
 
@@ -50,7 +50,7 @@ impl Web3 {
             .send_transaction(
                 weth_address,
                 payload,
-                0u16.into(),
+                u256!(0),
                 own_address,
                 &secret,
                 vec![],

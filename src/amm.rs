@@ -59,9 +59,9 @@ impl Web3 {
     ///     Address::parse_and_validate("0x1111111111111111111111111111111111111111").unwrap(),
     ///     *WETH_CONTRACT_ADDRESS,
     ///     *DAI_CONTRACT_ADDRESS,
-    ///     Some(500u16.into()),
-    ///     Uint256::from_str("1000000000000000000"), // 1 WETH
-    ///     Some(uniswap_sqrt_price(1u8.into(), 2023u16.into())), // Sample 1 Eth ->  2k Dai swap rate
+    ///     Some(u256!(500)),
+    ///     u256!(1000000000000000000), // 1 WETH
+    ///     Some(uniswap_sqrt_price(u256!(1), u256!(2023))), // Sample 1 Eth ->  2k Dai swap rate
     ///     Some(*UNISWAP_QUOTER_ADDRESS),
     /// );
     /// ```
@@ -78,7 +78,7 @@ impl Web3 {
     ) -> Result<Uint256, Web3Error> {
         let quoter = uniswap_quoter.unwrap_or(*UNISWAP_QUOTER_ADDRESS);
 
-        let fee_uint24 = fee_uint24.unwrap_or_else(|| 500u32.into());
+        let fee_uint24 = fee_uint24.unwrap_or(u256!(500));
         if bad_fee(fee_uint24) {
             return Err(Web3Error::BadInput(
                 "Bad fee input to swap price - value too large for uint24".to_string(),
@@ -107,7 +107,7 @@ impl Web3 {
             &tokens,
         )?;
         let result = self
-            .simulate_transaction(quoter, 0u8.into(), payload, caller_address, None)
+            .simulate_transaction(quoter, u256!(0), payload, caller_address, None)
             .await?;
         debug!("result is {:?}", result);
         Ok(Uint256::from_bytes_be(match result.get(0..32) {
@@ -142,6 +142,7 @@ impl Web3 {
     /// ```
     /// use std::time::Duration;
     /// use clarity::PrivateKey;
+    /// use clarity::u256;
     /// use web30::amm::*;
     /// use web30::client::Web3;
     /// let web3 = Web3::new("http://localhost:8545", Duration::from_secs(5));
@@ -149,11 +150,11 @@ impl Web3 {
     ///     "0x1111111111111111111111111111111111111111111111111111111111111111".parse().unwrap(),
     ///     *WETH_CONTRACT_ADDRESS,
     ///     *DAI_CONTRACT_ADDRESS,
-    ///     Some(500u16.into()),
-    ///     1000000000000000000u128.into(), // 1 WETH
-    ///     Some(60u8.into()), // Wait 1 minute
-    ///     Some(2020000000000000000000u128.into()), // Expect >= 2020 DAI
-    ///     Some(uniswap_sqrt_price(1u8.into(), 2023u16.into())), // Sample 1 Eth ->  2k Dai swap rate
+    ///     Some(u256!(500)),
+    ///     u256!(1000000000000000000), // 1 WETH
+    ///     Some(u256!(60)), // Wait 1 minute
+    ///     Some(u256!(2020000000000000000000)), // Expect >= 2020 DAI
+    ///     Some(uniswap_sqrt_price(u256!(1), u256!(2023))), // Sample 1 Eth ->  2k Dai swap rate
     ///     Some(*UNISWAP_ROUTER_ADDRESS),
     ///     None,
     ///     None,
@@ -174,7 +175,7 @@ impl Web3 {
         options: Option<Vec<SendTxOption>>, // Options for send_transaction
         wait_timeout: Option<Duration>,
     ) -> Result<Uint256, Web3Error> {
-        let fee_uint24 = fee_uint24.unwrap_or_else(|| 3000u16.into());
+        let fee_uint24 = fee_uint24.unwrap_or_else(|| u256!(3000));
         if bad_fee(fee_uint24) {
             return Err(Web3Error::BadInput(
                 "Bad fee input to swap_uniswap - value too large for uint24".to_string(),
@@ -266,7 +267,7 @@ impl Web3 {
             .send_transaction(
                 router,
                 payload,
-                0u32.into(),
+                u256!(0),
                 eth_address,
                 &eth_private_key,
                 options,
@@ -312,17 +313,18 @@ impl Web3 {
     /// ```
     /// use std::time::Duration;
     /// use clarity::PrivateKey;
+    /// use clarity::u256;
     /// use web30::amm::*;
     /// use web30::client::Web3;
     /// let web3 = Web3::new("http://localhost:8545", Duration::from_secs(5));
     /// let result = web3.swap_uniswap_eth_in(
     ///     "0x1111111111111111111111111111111111111111111111111111111111111111".parse().unwrap(),
     ///     *DAI_CONTRACT_ADDRESS,
-    ///     Some(500u16.into()),
-    ///     1000000000000000000u128.into(), // 1 WETH
-    ///     Some(60u8.into()), // Wait 1 minute
-    ///     Some(2020000000000000000000u128.into()), // Expect >= 2020 DAI
-    ///     Some(uniswap_sqrt_price(1u8.into(), 2023u16.into())), // Sample 1 Eth ->  2k Dai swap rate
+    ///     Some(u256!(500)),
+    ///     u256!(1000000000000000000), // 1 WETH
+    ///     Some(u256!(60)), // Wait 1 minute
+    ///     Some(u256!(2020000000000000000000)), // Expect >= 2020 DAI
+    ///     Some(uniswap_sqrt_price(u256!(1), u256!(2023))), // Sample 1 Eth ->  2k Dai swap rate
     ///     Some(*UNISWAP_ROUTER_ADDRESS),
     ///     None,
     ///     None,
@@ -343,7 +345,7 @@ impl Web3 {
         wait_timeout: Option<Duration>,
     ) -> Result<Uint256, Web3Error> {
         let token_in = *WETH_CONTRACT_ADDRESS; // Uniswap requires WETH to be one of the swap tokens for ETH swaps
-        let fee_uint24 = fee_uint24.unwrap_or_else(|| 3000u16.into());
+        let fee_uint24 = fee_uint24.unwrap_or_else(|| u256!(3000));
         if bad_fee(fee_uint24) {
             return Err(Web3Error::BadInput(
                 "Bad fee input to swap_uniswap_eth_in - value too large for uint24".to_string(),
@@ -489,9 +491,9 @@ async fn get_uniswap_price_test() {
     let web3 = Web3::new("https://eth.althea.net", Duration::from_secs(5));
     let caller_address =
         Address::parse_and_validate("0x5A0b54D5dc17e0AadC383d2db43B0a0D3E029c4c").unwrap();
-    let amount = Uint256::from(1_000_000_000_000_000_000u64);
-    let fee = Uint256::from(500u16);
-    let sqrt_price_limit_x96_uint160 = Uint256::from(0u16);
+    let amount = u256!(1_000_000_000_000_000_000);
+    let fee = u256!(500);
+    let sqrt_price_limit_x96_uint160 = u256!(0);
 
     let price = web3
         .get_uniswap_price(
@@ -506,7 +508,7 @@ async fn get_uniswap_price_test() {
         .await;
     let weth2dai = price.unwrap();
     debug!("weth->dai price is {}", weth2dai);
-    assert!(weth2dai > 0u32.into());
+    assert!(weth2dai > u256!(0));
     let price = web3
         .get_uniswap_price(
             caller_address,
@@ -549,14 +551,17 @@ async fn swap_hardhat_test() {
     Builder::from_env(Env::default().default_filter_or("warn")).init(); // Change to debug for logs
 
     let web3 = Web3::new("http://localhost:8545", Duration::from_secs(300));
-    let amount = Uint256::from(1000000000000000000u64); // 1 weth
-    let amount_out_min: Uint256 = 0u8.into();
-    let fee = Uint256::from(500u16);
+    let amount = u256!(1000000000000000000); // 1 weth
+    let amount_out_min = u256!(0);
+    let fee = u256!(500);
 
-    let sqrt_price_limit_x96_uint160: Uint256 = 0u8.into();
+    let sqrt_price_limit_x96_uint160 = u256!(0);
 
     let block = web3.eth_get_latest_block().await.unwrap();
-    let deadline = block.timestamp.checked_add(Uint256::from_u64(10u64 * 60u64 * 100000u64)).unwrap();
+    let deadline = block
+        .timestamp
+        .checked_add(Uint256::from_u64(10u64 * 60u64 * 100000u64))
+        .unwrap();
 
     let success = web3
         .wrap_eth(amount.clone(), miner_private_key, None, None)
@@ -611,8 +616,8 @@ async fn swap_hardhat_test() {
         executing_weth, executing_dai
     );
 
-    let dai_gained = executing_dai.clone() - initial_dai.clone();
-    assert!(dai_gained > 0u8.into());
+    let dai_gained = executing_dai.checked_sub(initial_dai).unwrap();
+    assert!(dai_gained > u256!(0));
     let result = web3
         .swap_uniswap(
             miner_private_key,
@@ -640,10 +645,15 @@ async fn swap_hardhat_test() {
         .await
         .unwrap();
     info!("Final WETH: {}, Final DAI: {}", final_weth, final_dai);
-    let final_dai_delta = final_dai - initial_dai;
-    assert!(final_dai_delta == 0u8.into()); // We should have gained little to no dai
+    let final_dai_delta = final_dai.checked_sub(initial_dai).unwrap();
+    assert!(final_dai_delta == u256!(0)); // We should have gained little to no dai
 
-    let weth_gained: f64 = (final_weth - executing_weth).to_string().parse().unwrap();
+    let weth_gained: f64 = final_weth
+        .checked_sub(executing_weth)
+        .unwrap()
+        .to_string()
+        .parse()
+        .unwrap();
     let original_amount: f64 = (amount).to_string().parse().unwrap();
     // we should not have lost or gained much
     assert!(0.95 * original_amount < weth_gained && weth_gained < 1.05 * original_amount);
@@ -671,14 +681,17 @@ async fn swap_hardhat_eth_in_test() {
     Builder::from_env(Env::default().default_filter_or("warn")).init(); // Change to debug for logs
 
     let web3 = Web3::new("http://localhost:8545", Duration::from_secs(300));
-    let amount = Uint256::from(1000000000000000000u64); // 1 weth
-    let amount_out_min: Uint256 = 0u8.into();
-    let fee = Uint256::from(500u16);
+    let amount = u256!(1000000000000000000); // 1 weth
+    let amount_out_min = u256!(0);
+    let fee = u256!(500);
 
-    let sqrt_price_limit_x96_uint160: Uint256 = 0u8.into();
+    let sqrt_price_limit_x96_uint160 = u256!(0);
 
     let block = web3.eth_get_latest_block().await.unwrap();
-    let deadline = block.timestamp.checked_add(Uint256::from_u64(10u64 * 60u64 * 100000u64)).unwrap();
+    let deadline = block
+        .timestamp
+        .checked_add(Uint256::from_u64(10u64 * 60u64 * 100000u64))
+        .unwrap();
 
     let initial_eth = web3.eth_get_balance(miner_address).await.unwrap();
     let initial_weth = web3
@@ -725,17 +738,17 @@ async fn swap_hardhat_eth_in_test() {
         final_eth, final_weth, final_dai
     );
 
-    let dai_gained = final_dai - initial_dai;
+    let dai_gained = final_dai.checked_sub(initial_dai).unwrap();
     // At the point the chain is frozen for the relay market test,
     // we expect to receive expect to receive about 2,300 dai
-    let two_k_dai = 2000 * 1_000_000_000_000_000_000u128;
-    let one_eth = 1_000_000_000_000_000_000u128;
+    let two_k_dai = Uint256::from_u128(2000 * 1_000_000_000_000_000_000);
+    let one_eth = Uint256::from_u128(1_000_000_000_000_000_000);
     assert!(
         dai_gained > two_k_dai.into(),
         "dai_gained = {} <= 2000 * 10^18",
         dai_gained
     );
-    let eth_lost = initial_eth - final_eth;
+    let eth_lost = initial_eth.checked_sub(final_eth).unwrap();
     assert!(
         eth_lost > one_eth.into(),
         "eth_lost = {} <= 1 * 10^18",

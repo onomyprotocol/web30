@@ -9,7 +9,7 @@ use crate::jsonrpc::error::Web3Error;
 use crate::types::{Block, Log, NewFilter, SyncingStatus, TransactionRequest, TransactionResponse};
 use crate::types::{ConciseBlock, ConciseXdaiBlock, Data, SendTxOption, XdaiBlock};
 use clarity::utils::bytes_to_hex_str;
-use clarity::Uint256;
+use clarity::{u256, Uint256};
 use clarity::{Address, PrivateKey, Transaction};
 use std::cmp::max;
 use std::{cmp::min, time::Duration};
@@ -530,10 +530,10 @@ impl Web3 {
         // be valid, we simply don't have the the funds to pay the full gas amount we are promising
         // this segment computes either the highest valid gas price we can pay or in the post-london
         // chain case errors if we can't meet the minimum fee
-        if gas_price.clone() * gas_limit.clone() > our_balance {
+        if gas_price.checked_mul(gas_limit).unwrap() > our_balance {
             let base_fee_per_gas = self.get_base_fee_per_gas().await?;
             if let Some(base_fee_per_gas) = base_fee_per_gas {
-                if base_fee_per_gas.clone() * gas_limit.clone() > our_balance {
+                if base_fee_per_gas.checked_mul(gas_limit).unwrap() > our_balance {
                     return Err(Web3Error::InsufficientGas {
                         balance: our_balance,
                         base_gas: base_fee_per_gas,
@@ -543,7 +543,7 @@ impl Web3 {
             }
             // this will give some value >= base_fee_per_gas * gas_limit
             // in post-london and some non zero value in pre-london
-            gas_price = our_balance / gas_limit.clone();
+            gas_price = our_balance.divide(gas_limit).unwrap().0;
         }
 
         let transaction = Transaction {
@@ -641,8 +641,8 @@ impl Web3 {
                         {
                             let current_block = self.eth_block_number().await?;
                             // we check for underflow, which is possible on testnets
-                            if current_block > blocks_to_wait
-                                && current_block - blocks_to_wait >= tx_block
+                            if (current_block > blocks_to_wait)
+                                && (current_block.checked_sub(blocks_to_wait).unwrap() >= tx_block)
                             {
                                 return Ok(transaction);
                             }
@@ -693,9 +693,12 @@ impl Web3 {
             // from causing failure
             Some(base_gas) => base_gas,
             // pre London
-            None => 1u8.into(),
+            None => u256!(1),
         };
-        let limit = min(GAS_LIMIT.into(), balance / price.clone());
+        let limit = min(
+            Uint256::from_u128(GAS_LIMIT),
+            balance.divide(price).unwrap().0,
+        );
         Ok(SimulatedGas { limit, price })
     }
 
@@ -765,11 +768,8 @@ async fn test_chain_id() {
     let web3 = Web3::new("https://eth.althea.net", Duration::from_secs(5));
     let web3_xdai = Web3::new("https://dai.althea.net", Duration::from_secs(5));
 
-    assert_eq!(Some(Uint256::from(1u8)), web3.eth_chainid().await.unwrap());
-    assert_eq!(
-        Some(Uint256::from(100u8)),
-        web3_xdai.eth_chainid().await.unwrap()
-    );
+    assert_eq!(Some(u256!(1)), web3.eth_chainid().await.unwrap());
+    assert_eq!(Some(u256!(100)), web3_xdai.eth_chainid().await.unwrap());
 }
 
 #[tokio::test]
@@ -784,14 +784,12 @@ async fn test_net_version() {
 #[tokio::test]
 async fn test_complex_response() {
     let web3 = Web3::new("https://eth.althea.net", Duration::from_secs(5));
-    let txid1 = "0x8b9ef028f99016cd3cb8d4168df7491a0bf44f08b678d37f63ab61e782c500ab"
-        .parse()
-        .unwrap();
+    let txid1 = u256!(0x8b9ef028f99016cd3cb8d4168df7491a0bf44f08b678d37f63ab61e782c500ab);
 
     let val = web3.eth_get_transaction_by_hash(txid1).await;
     let val = val.expect("tokio failure");
     let response = val.expect("Failed to parse transaction response");
-    assert!(response.block_number.unwrap() > 10u32.into());
+    assert!(response.block_number.unwrap() > u256!(10));
 }
 
 #[tokio::test]
@@ -803,7 +801,7 @@ async fn test_transaction_count_response() {
 
     let val = web3.eth_get_transaction_count(address).await;
     let val = val.unwrap();
-    assert!(val > 0u32.into());
+    assert!(val > u256!(0));
 }
 
 #[tokio::test]
@@ -813,11 +811,11 @@ async fn test_block_response() {
     let val = web3.eth_get_latest_block().await;
     eprintln!("{:?}", val);
     let val = val.expect("tokio failure");
-    assert!(val.number > 10u32.into());
+    assert!(val.number > u256!(10));
 
     let val = web3.eth_get_latest_block_full().await;
     let val = val.expect("tokio failure");
-    assert!(val.number > 10u32.into());
+    assert!(val.number > u256!(10));
 }
 
 #[tokio::test]
@@ -826,7 +824,7 @@ async fn test_dai_block_response() {
 
     let val = web3.xdai_get_latest_block().await;
     let val = val.expect("tokio failure");
-    assert!(val.number > 10u32.into());
+    assert!(val.number > u256!(10));
 }
 
 #[tokio::test]

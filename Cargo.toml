@@ -19,7 +19,7 @@ serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
 tokio = { version = "1.4", features = ["macros", "time"] }
-u64_array_bigints = { path = "../u64_array_bigints/u64_array_bigints", default-features = false }
+u64_array_bigints = { path = "../u64_array_bigints/u64_array_bigints", default-features = false, features = ["serde_support"] }
 #u64_array_bigints = { git = "https://github.com/AaronKutch/u64_array_bigints.git", rev = "8498a8884e2adcd8932cd1925b000750a2dc1f88", default-features = false }
 
 [dev-dependencies]

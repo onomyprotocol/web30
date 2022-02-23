@@ -2,7 +2,7 @@
 use crate::jsonrpc::error::Web3Error;
 use crate::{client::Web3, types::SendTxOption};
 use clarity::{abi::encode_call, PrivateKey as EthPrivateKey};
-use clarity::{Address, Uint256};
+use clarity::{u256, Address, Uint256};
 use std::time::Duration;
 use tokio::time::timeout as future_timeout;
 
@@ -25,7 +25,7 @@ impl Web3 {
             &[own_address.into(), target_contract.into()],
         )?;
         let allowance = self
-            .simulate_transaction(erc20, 0u8.into(), payload, own_address, None)
+            .simulate_transaction(erc20, u256!(0), payload, own_address, None)
             .await?;
 
         let allowance = Uint256::from_bytes_be(match allowance.get(0..32) {
@@ -70,7 +70,7 @@ impl Web3 {
             .send_transaction(
                 erc20,
                 payload,
-                0u32.into(),
+                u256!(0),
                 own_address,
                 eth_private_key,
                 options,
@@ -120,7 +120,7 @@ impl Web3 {
             }
         }
         if !has_gas_limit {
-            options.push(SendTxOption::GasLimit(ERC20_GAS_LIMIT.into()));
+            options.push(SendTxOption::GasLimit(Uint256::from_u128(ERC20_GAS_LIMIT)));
         }
 
         let tx_hash = self
@@ -130,7 +130,7 @@ impl Web3 {
                     "transfer(address,uint256)",
                     &[recipient.into(), amount.clone().into()],
                 )?,
-                0u32.into(),
+                u256!(0),
                 sender_address,
                 &sender_private_key,
                 options,
@@ -155,7 +155,7 @@ impl Web3 {
     ) -> Result<Uint256, Web3Error> {
         let payload = encode_call("balanceOf(address)", &[target_address.into()])?;
         let balance = self
-            .simulate_transaction(erc20, 0u8.into(), payload, target_address, None)
+            .simulate_transaction(erc20, u256!(0), payload, target_address, None)
             .await?;
 
         Ok(Uint256::from_bytes_be(match balance.get(0..32) {
@@ -176,7 +176,7 @@ impl Web3 {
     ) -> Result<String, Web3Error> {
         let payload = encode_call("name()", &[])?;
         let name = self
-            .simulate_transaction(erc20, 0u8.into(), payload, caller_address, None)
+            .simulate_transaction(erc20, u256!(0), payload, caller_address, None)
             .await?;
 
         match String::from_utf8(name) {
@@ -200,7 +200,7 @@ impl Web3 {
     ) -> Result<String, Web3Error> {
         let payload = encode_call("symbol()", &[])?;
         let symbol = self
-            .simulate_transaction(erc20, 0u8.into(), payload, caller_address, None)
+            .simulate_transaction(erc20, u256!(0), payload, caller_address, None)
             .await?;
 
         match String::from_utf8(symbol) {
@@ -224,7 +224,7 @@ impl Web3 {
     ) -> Result<Uint256, Web3Error> {
         let payload = encode_call("decimals()", &[])?;
         let decimals = self
-            .simulate_transaction(erc20, 0u8.into(), payload, caller_address, None)
+            .simulate_transaction(erc20, u256!(0), payload, caller_address, None)
             .await?;
 
         Ok(Uint256::from_bytes_be(match decimals.get(0..32) {
@@ -245,7 +245,7 @@ impl Web3 {
     ) -> Result<Uint256, Web3Error> {
         let payload = encode_call("totalSupply()", &[])?;
         let decimals = self
-            .simulate_transaction(erc20, 0u8.into(), payload, caller_address, None)
+            .simulate_transaction(erc20, u256!(0), payload, caller_address, None)
             .await?;
 
         Ok(Uint256::from_bytes_be(match decimals.get(0..32) {
@@ -275,9 +275,9 @@ async fn test_erc20_metadata() {
         web3.get_erc20_decimals(dai_address, caller_address)
             .await
             .unwrap(),
-        18u8.into()
+        u256!(18)
     );
-    let num: Uint256 = 1000u32.into();
+    let num = u256!(1000);
     assert!(
         web3.get_erc20_supply(dai_address, caller_address)
             .await
