@@ -87,8 +87,8 @@ impl Display for Web3Error {
                 base_gas,
                 gas_required,
             } => {
-                write!(f, "Block has base_fee_per_gas {} and transaction requires {} gas. Your balance of {} < {}. Transaction impossible",
-            base_gas, gas_required, balance, base_gas.checked_mul(*gas_required).unwrap())
+                write!(f, "Block has base_fee_per_gas {} and transaction requires {} gas. Your balance of {:?} < {:?}. Transaction impossible",
+            base_gas, gas_required, balance, base_gas.checked_mul(*gas_required))
             }
             Web3Error::ContractCallError(val) => {
                 write!(f, "Error performing Ethereum contract call {}", val)
