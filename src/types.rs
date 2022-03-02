@@ -240,7 +240,7 @@ pub struct Block {
     pub receipts_root: Uint256,
     // Geth also does not include this field.
     #[serde(rename = "sealFields")]
-    pub seal_fields: Option<Vec<Uint256>>,
+    pub seal_fields: Option<Vec<String>>,
     #[serde(rename = "sha3Uncles")]
     pub sha3_uncles: Uint256,
     pub size: Uint256,
@@ -283,7 +283,7 @@ pub struct XdaiBlock {
     #[serde(rename = "receiptsRoot")]
     pub receipts_root: Uint256,
     #[serde(rename = "sealFields")]
-    pub seal_fields: Vec<Uint256>,
+    pub seal_fields: Vec<String>,
     #[serde(rename = "sha3Uncles")]
     pub sha3_uncles: Uint256,
     pub signature: String,
@@ -333,7 +333,7 @@ pub struct ConciseBlock {
     pub receipts_root: Uint256,
     // Geth also does not include this field.
     #[serde(rename = "sealFields")]
-    pub seal_fields: Option<Vec<Uint256>>,
+    pub seal_fields: Option<Vec<String>>,
     #[serde(rename = "sha3Uncles")]
     pub sha3_uncles: Uint256,
     pub size: Uint256,
@@ -376,7 +376,7 @@ pub struct ConciseXdaiBlock {
     #[serde(rename = "receiptsRoot")]
     pub receipts_root: Uint256,
     #[serde(rename = "sealFields")]
-    pub seal_fields: Vec<Uint256>,
+    pub seal_fields: Vec<String>,
     #[serde(rename = "sha3Uncles")]
     pub sha3_uncles: Uint256,
     pub signature: String,
@@ -409,7 +409,7 @@ where
     D: Deserializer<'de>,
 {
     let s: String = String::deserialize(deserializer)?;
-    match Uint256::from_dec_or_hex_str(&s) {
+    match Uint256::from_dec_or_hex_str_restricted(&s) {
         Ok(val) => Ok(val),
         Err(_) => Ok(u256!(0)),
     }
