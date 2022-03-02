@@ -512,10 +512,15 @@ impl Web3 {
             );
         } else {
             // gas price is insanely high, best effort rounding
-            // perhaps we should panic here
-            gas_limit = gas_limit
-                .checked_mul(Uint256::from_u128(gas_limit_multiplier.round() as u128))
-                .unwrap()
+            //gas_limit = gas_limit
+            //    .checked_mul(Uint256::from_u128(gas_limit_multiplier.round() as u128))
+            //    .unwrap()
+
+            // let's return an error because it should not be possible,
+            // the total supply of most chains is in the 10^26 range and u128 fits 10^38
+            return Err(Web3Error::BadInput(
+                "the gas price is higher than should be possible".to_owned(),
+            ));
         }
 
         let network_id = if let Some(ni) = network_id {
@@ -639,8 +644,8 @@ impl Web3 {
                         {
                             let current_block = self.eth_block_number().await?;
                             // we check for underflow, which is possible on testnets
-                            if (current_block > blocks_to_wait)
-                                && (current_block.checked_sub(blocks_to_wait).unwrap() >= tx_block)
+                            if current_block > blocks_to_wait
+                                && current_block.checked_sub(blocks_to_wait).unwrap() >= tx_block
                             {
                                 return Ok(transaction);
                             }
