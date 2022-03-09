@@ -473,17 +473,22 @@ impl Web3 {
         } else {
             let gas_price = self.eth_gas_price().await?;
             if gas_price.sig_bits() <= 128 {
-                // convert to f32, multiply, then convert back, this
+                // convert to f64, multiply, then convert back, this
                 // will be lossy but you want an exact price you can set it
                 Uint256::from_u128(
                     (gas_price.resize_to_u128() as f64 * (gas_price_multiplier as f64)) as u128,
                 )
             } else {
                 // gas price is insanely high, best effort rounding
-                // perhaps we should panic here
-                gas_price
-                    .checked_mul(Uint256::from_u128(gas_price_multiplier.round() as u128))
-                    .unwrap()
+                //gas_price = gas_price
+                //    .checked_mul(Uint256::from_u128(gas_price_multiplier.round() as u128))
+                //    .unwrap()
+    
+                // let's return an error because it should not be possible,
+                // the total supply of most chains is in the 10^26 range and u128 fits 10^38
+                return Err(Web3Error::BadInput(
+                    "the gas price is higher than should be possible".to_owned(),
+                ));
             }
         };
 
@@ -505,7 +510,7 @@ impl Web3 {
 
         // multiply limit by gasLimitMultiplier
         if gas_limit.sig_bits() <= 128 {
-            // convert to f32, multiply, then convert back, this
+            // convert to f64, multiply, then convert back, this
             // will be lossy but you want an exact price you can set it
             gas_limit = Uint256::from_u128(
                 (gas_limit.resize_to_u128() as f64 * (gas_limit_multiplier as f64)) as u128,
