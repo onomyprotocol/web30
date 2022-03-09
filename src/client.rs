@@ -483,7 +483,7 @@ impl Web3 {
                 //gas_price = gas_price
                 //    .checked_mul(Uint256::from_u128(gas_price_multiplier.round() as u128))
                 //    .unwrap()
-    
+
                 // let's return an error because it should not be possible,
                 // the total supply of most chains is in the 10^26 range and u128 fits 10^38
                 return Err(Web3Error::BadInput(
