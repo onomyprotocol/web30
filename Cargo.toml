@@ -8,7 +8,7 @@ repository = "https://github.com/onomyprotocol/web30.git"
 version = "0.18.3"
 
 [dependencies]
-clarity = { git = "https://github.com/onomyprotocol/clarity.git", rev = "52bc13f7d2778d293e2d787528d481604620a281" }
+clarity = { git = "https://github.com/onomyprotocol/clarity.git", rev = "0b69d4aabae546a2d1bd296f04ba64a8a1546b9a" }
 hyper = { version = "0.14", features = ["full"] }
 hyper-tls = "0.5.0"
 lazy_static = "1.4"
