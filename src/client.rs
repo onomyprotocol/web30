@@ -772,6 +772,7 @@ struct SimulatedGas {
     price: Uint256,
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_chain_id() {
     let web3 = Web3::new("https://eth.althea.net", Duration::from_secs(5));
@@ -781,6 +782,7 @@ async fn test_chain_id() {
     assert_eq!(Some(u256!(100)), web3_xdai.eth_chainid().await.unwrap());
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_net_version() {
     let web3_xdai = Web3::new("https://dai.althea.net", Duration::from_secs(5));
@@ -789,6 +791,7 @@ async fn test_net_version() {
     assert_eq!(1u64, web3.net_version().await.unwrap());
     assert_eq!(100u64, web3_xdai.net_version().await.unwrap());
 }
+
 #[ignore]
 #[tokio::test]
 async fn test_complex_response() {
@@ -801,6 +804,7 @@ async fn test_complex_response() {
     assert!(response.block_number.unwrap() > u256!(10));
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_transaction_count_response() {
     let web3 = Web3::new("https://eth.althea.net", Duration::from_secs(5));
@@ -813,6 +817,7 @@ async fn test_transaction_count_response() {
     assert!(val > u256!(0));
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_block_response() {
     let web3 = Web3::new("https://eth.althea.net", Duration::from_secs(5));
