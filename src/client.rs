@@ -847,5 +847,5 @@ async fn test_request_timeout() {
     let web3 = Web3::new("https://dai.althea.net", Duration::from_millis(1));
 
     let val = web3.xdai_get_latest_block().await;
-    assert!(val.is_err());
+    val.unwrap_err();
 }
