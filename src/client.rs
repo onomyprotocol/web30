@@ -241,6 +241,16 @@ impl Web3 {
         }
     }
 
+    /// Gets the latest finalized block
+    pub async fn eth_finalized_block_number(&self) -> Result<Uint256, Web3Error> {
+        match self.eth_syncing().await? {
+            false => Ok(self.eth_get_finalized_block().await?.number),
+            true => Err(Web3Error::SyncingNode(
+                "Cannot perform eth_block_number".to_string(),
+            )),
+        }
+    }
+
     pub async fn eth_get_block_by_number(&self, block_number: Uint256) -> Result<Block, Web3Error> {
         let latest_known_block = self.eth_synced_block_number().await?;
         if block_number <= latest_known_block {
@@ -343,6 +353,21 @@ impl Web3 {
             }
             _ => Err(Web3Error::SyncingNode(
                 "Cannot perform eth_get_latest_block".to_string(),
+            )),
+        }
+    }
+
+    /// "finalized" is more conservative than "safe", and reorgs can only happen if
+    /// 2/3rds of validators finalize a competing chain
+    pub async fn eth_get_finalized_block(&self) -> Result<ConciseBlock, Web3Error> {
+        match self.eth_syncing().await? {
+            false => {
+                self.jsonrpc_client
+                    .request_method("eth_getBlockByNumber", ("finalized", false), self.timeout)
+                    .await
+            }
+            _ => Err(Web3Error::SyncingNode(
+                "Cannot perform eth_get_finalized_block".to_string(),
             )),
         }
     }
@@ -624,7 +649,7 @@ impl Web3 {
         }
     }
 
-    /// Waits for a transaction with the given hash to be included in a block
+    /// Waits for a transaction with the given hash to be included in a block (not necessarily a finalized block)
     /// it will wait for at most timeout time and optionally can wait for n
     /// blocks to have passed
     pub async fn wait_for_transaction(

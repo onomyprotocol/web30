@@ -133,7 +133,7 @@ impl Web3 {
     }
 
     /// Checks for multiple events as defined by their signature strings over a block range. If no ending block is provided
-    /// the latest will be used. This function will not wait for events to occur.
+    /// the latest finalized block will be used. This function will not wait for events to occur.
     pub async fn check_for_events(
         &self,
         start_block: Uint256,
@@ -147,7 +147,7 @@ impl Web3 {
         if let Some(end_block) = end_block {
             to_block = Some(format!("{:#x}", end_block));
         } else {
-            let latest_block = self.eth_block_number().await?;
+            let latest_block = self.eth_finalized_block_number().await?;
             to_block = Some(format!("{:#x}", latest_block));
         }
 
@@ -168,7 +168,7 @@ impl Web3 {
     }
 
     /// Checks for multiple events as defined by arbitrary user input over a block range. If no ending block is provided
-    /// the latest will be used. This function will not wait for events to occur
+    /// the latest finalized block will be used. This function will not wait for events to occur
     pub async fn check_for_arbitrary_events(
         &self,
         start_block: Uint256,
@@ -182,7 +182,7 @@ impl Web3 {
         if let Some(end_block) = end_block {
             to_block = Some(format!("{:#x}", end_block));
         } else {
-            let latest_block = self.eth_block_number().await?;
+            let latest_block = self.eth_finalized_block_number().await?;
             to_block = Some(format!("{:#x}", latest_block));
         }
 
