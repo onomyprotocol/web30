@@ -22,3 +22,8 @@ u64_array_bigints = { version = "0.3", default-features = false, features = ["se
 
 [dev-dependencies]
 env_logger = "0.9"
+
+[features]
+debug_requests = []
+debug_responses = []
+debug_errors = []
