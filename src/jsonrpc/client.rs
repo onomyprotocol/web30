@@ -69,8 +69,13 @@ impl HttpClient {
         for<'de> R: Deserialize<'de>,
         R: std::fmt::Debug,
     {
-        let payload = JsonRpcRequest::new(self.next_id(), method, params);
-        let payload = serde_json::to_vec(&payload)?;
+        let json_payload = JsonRpcRequest::new(self.next_id(), method, params);
+        let payload = serde_json::to_vec(&json_payload)?;
+
+        #[cfg(feature = "debug_requests")]
+        {
+            println!("{}", String::from_utf8(payload.clone()).unwrap());
+        }
 
         let req = Request::builder()
             .method(Method::POST)
@@ -88,15 +93,33 @@ impl HttpClient {
         };
 
         let response: JsonResponse<R> = serde_json::from_slice(&result?)?;
-        trace!("got web3 response {:#?}", response);
+        #[cfg(feature = "debug_responses")]
+        {
+            println!("{:?}", response);
+        }
+        #[cfg(not(feature = "debug_responses"))]
+        {
+            // we have this separate in case we only want responses and not all the other traces
+            trace!("got web3 response {:?}", response);
+        }
 
         match response.data.into_result() {
             Ok(result) => Ok(result),
-            Err(error) => Err(Web3Error::JsonRpcError {
-                code: error.code,
-                message: error.message,
-                data: format!("{:?}", error.data),
-            }),
+            Err(error) => {
+                #[cfg(feature = "debug_errors")]
+                {
+                    error!(
+                        "when using request payload:\n{}\n, got web3 error response {:?}",
+                        String::from_utf8(serde_json::to_vec(&json_payload)?).unwrap(),
+                        error
+                    );
+                }
+                Err(Web3Error::JsonRpcError {
+                    code: error.code,
+                    message: error.message,
+                    data: format!("{:?}", error.data),
+                })
+            }
         }
     }
 }
