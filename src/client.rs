@@ -787,6 +787,9 @@ impl Web3 {
                 // errors should not exit early
                 (Err(_), _) => {}
             }
+            // without this, under the block production speeds of some chains
+            // this while loop would run as fast as it can and cause issues.
+            delay_for(Duration::from_secs(1)).await;
         }
         Err(Web3Error::NoBlockProduced { time: timeout })
     }
