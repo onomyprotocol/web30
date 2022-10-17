@@ -27,3 +27,4 @@ env_logger = "0.9"
 debug_requests = []
 debug_responses = []
 debug_errors = []
+extra_finalization = []

@@ -672,7 +672,11 @@ impl Web3 {
                         else if let (Some(blocks_to_wait), Some(tx_block)) =
                             (blocks_to_wait, transaction.block_number)
                         {
-                            let current_block = self.eth_block_number().await?;
+                            let current_block = if cfg!(feature = "extra_finalization") {
+                                self.eth_finalized_block_number().await?
+                            } else {
+                                self.eth_block_number().await?
+                            };
                             // we check for underflow, which is possible on testnets
                             if current_block > blocks_to_wait
                                 && current_block.checked_sub(blocks_to_wait).unwrap() >= tx_block
