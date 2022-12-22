@@ -24,7 +24,11 @@ u64_array_bigints = { version = "0.3", default-features = false, features = ["se
 env_logger = "0.9"
 
 [features]
+default = ["warn_on_json_error"]
 debug_requests = []
 debug_responses = []
-debug_errors = []
+warn_on_json_error = []
+warn_on_rpc_error = []
 extra_finalization = []
+# enables some globals for programmatically recording all JSON RPC requests and responses
+record_json_rpc = []

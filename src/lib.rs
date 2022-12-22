@@ -18,3 +18,12 @@ mod mem;
 pub mod types;
 
 pub use event_utils::address_to_event;
+
+#[cfg(feature = "record_json_rpc")]
+lazy_static! {
+    pub static ref JSON_RPC_COUNTER: std::sync::Mutex<u64> = std::sync::Mutex::new(0);
+    pub static ref JSON_RPC_REQUESTS: std::sync::Mutex<Vec<(u64, String)>> =
+        std::sync::Mutex::new(vec![]);
+    pub static ref JSON_RPC_RESPONSES: std::sync::Mutex<Vec<(u64, String)>> =
+        std::sync::Mutex::new(vec![]);
+}
