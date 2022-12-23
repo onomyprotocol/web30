@@ -25,6 +25,7 @@ env_logger = "0.9"
 
 [features]
 default = ["warn_on_json_error"]
+use_xdai_blocks = []
 debug_requests = []
 debug_responses = []
 warn_on_json_error = []

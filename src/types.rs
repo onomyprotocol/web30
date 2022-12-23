@@ -351,7 +351,7 @@ pub struct ConciseBlock {
 /// Xdai block with more concise tx hashes instead of full transactions
 #[derive(Serialize, Debug, Deserialize, Clone, PartialEq, Eq)]
 pub struct ConciseXdaiBlock {
-    pub author: Address,
+    pub author: Option<Address>,
     pub difficulty: Uint256,
     #[serde(
         rename = "extraData",
@@ -376,14 +376,14 @@ pub struct ConciseXdaiBlock {
     #[serde(rename = "receiptsRoot")]
     pub receipts_root: Uint256,
     #[serde(rename = "sealFields")]
-    pub seal_fields: Vec<String>,
+    pub seal_fields: Option<Vec<String>>,
     #[serde(rename = "sha3Uncles")]
     pub sha3_uncles: Uint256,
-    pub signature: String,
+    pub signature: Option<String>,
     pub size: Uint256,
     #[serde(rename = "stateRoot")]
     pub state_root: Uint256,
-    pub step: Uint256,
+    pub step: Option<Uint256>,
     pub timestamp: Uint256,
     #[serde(rename = "totalDifficulty")]
     pub total_difficulty: Uint256,
