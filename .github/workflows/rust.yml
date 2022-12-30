@@ -15,7 +15,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
         continue-on-error: true
       - name: Build
         run: cargo build --verbose
@@ -24,7 +24,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
         continue-on-error: true
       - name: Run tests
         run: cargo test --verbose
@@ -40,7 +40,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
         continue-on-error: true
       - name: Check for Clippy lints
         run: rustup component add clippy && cargo clippy --all --all-targets --all-features -- -D warnings

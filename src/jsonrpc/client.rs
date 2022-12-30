@@ -76,6 +76,20 @@ impl HttpClient {
         {
             println!("{}", String::from_utf8(payload.clone()).unwrap());
         }
+        #[cfg(feature = "record_json_rpc")]
+        fn record_json(payload: Vec<u8>) -> u64 {
+            // this counter is here in case of failures inbetween the request and response recording
+            let mut rpc_counter = crate::JSON_RPC_COUNTER.lock().unwrap();
+            let count = *rpc_counter;
+            *rpc_counter += 1;
+            crate::JSON_RPC_REQUESTS
+                .lock()
+                .unwrap()
+                .push((count, String::from_utf8(payload).unwrap()));
+            count
+        }
+        #[cfg(feature = "record_json_rpc")]
+        let count = record_json(payload.clone());
 
         let req = Request::builder()
             .method(Method::POST)
@@ -91,34 +105,59 @@ impl HttpClient {
             bytes = self.aggregate_bytes(req) => Ok(bytes?),
             _ = time::sleep(timeout) => Err(Web3Error::BadResponse("Request Timed Out".into()))
         };
+        let result = result?;
 
-        let response: JsonResponse<R> = serde_json::from_slice(&result?)?;
         #[cfg(feature = "debug_responses")]
         {
-            println!("{:?}", response);
+            let mut tmp = result.to_vec();
+            if *tmp.last().unwrap() == b'\n' {
+                tmp.pop();
+            }
+            println!("{}", String::from_utf8(tmp).unwrap());
         }
-        #[cfg(not(feature = "debug_responses"))]
+        #[cfg(feature = "record_json_rpc")]
         {
-            // we have this separate in case we only want responses and not all the other traces
-            trace!("got web3 response {:?}", response);
+            let mut tmp = result.to_vec();
+            if *tmp.last().unwrap() == b'\n' {
+                tmp.pop();
+            }
+            crate::JSON_RPC_RESPONSES
+                .lock()
+                .unwrap()
+                .push((count, String::from_utf8(tmp).unwrap()));
         }
-
-        match response.data.into_result() {
-            Ok(result) => Ok(result),
+        let response: Result<JsonResponse<R>, serde_json::Error> = serde_json::from_slice(&result);
+        match response {
+            Ok(response) => match response.data.into_result() {
+                Ok(result) => Ok(result),
+                Err(error) => {
+                    #[cfg(feature = "warn_on_rpc_error")]
+                    {
+                        warn!(
+                            "when using request payload:\n{}\n, got response:\n{}, giving Response<R> error:\n{:?}",
+                            String::from_utf8(serde_json::to_vec(&json_payload)?).unwrap(),
+                            String::from_utf8(result.to_vec()).unwrap(),
+                            error
+                        );
+                    }
+                    Err(Web3Error::JsonRpcError {
+                        code: error.code,
+                        message: error.message,
+                        data: format!("{:?}", error.data),
+                    })
+                }
+            },
             Err(error) => {
-                #[cfg(feature = "debug_errors")]
+                #[cfg(feature = "warn_on_json_error")]
                 {
-                    error!(
-                        "when using request payload:\n{}\n, got web3 error response {:?}",
+                    warn!(
+                        "when using request payload:\n{}\n, got response:\n{}, giving JsonResponse<R> error:\n{:?}",
                         String::from_utf8(serde_json::to_vec(&json_payload)?).unwrap(),
+                        String::from_utf8(result.to_vec()).unwrap(),
                         error
                     );
                 }
-                Err(Web3Error::JsonRpcError {
-                    code: error.code,
-                    message: error.message,
-                    data: format!("{:?}", error.data),
-                })
+                Err(error.into())
             }
         }
     }

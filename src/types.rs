@@ -1,6 +1,6 @@
 use clarity::utils::{bytes_to_hex_str, hex_str_to_bytes};
+use clarity::Address;
 use clarity::Uint256;
-use clarity::{u256, Address};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{cmp::Ordering, ops::Deref};
 
@@ -213,11 +213,8 @@ pub struct Block {
     // geth does not include the author in it's RPC response.
     pub author: Option<Address>,
     pub difficulty: Uint256,
-    #[serde(
-        rename = "extraData",
-        deserialize_with = "parse_possibly_empty_hex_val"
-    )]
-    pub extra_data: Uint256,
+    #[serde(rename = "extraData")]
+    pub extra_data: Option<String>,
     #[serde(rename = "gasLimit")]
     pub gas_limit: Uint256,
     #[serde(rename = "gasUsed")]
@@ -260,11 +257,8 @@ pub struct Block {
 pub struct XdaiBlock {
     pub author: Address,
     pub difficulty: Uint256,
-    #[serde(
-        rename = "extraData",
-        deserialize_with = "parse_possibly_empty_hex_val"
-    )]
-    pub extra_data: Uint256,
+    #[serde(rename = "extraData")]
+    pub extra_data: Option<String>,
     #[serde(rename = "gasLimit")]
     pub gas_limit: Uint256,
     #[serde(rename = "gasUsed")]
@@ -305,12 +299,9 @@ pub struct XdaiBlock {
 pub struct ConciseBlock {
     // geth does not include the author in it's RPC response.
     pub author: Option<Address>,
-    pub difficulty: Uint256,
-    #[serde(
-        rename = "extraData",
-        deserialize_with = "parse_possibly_empty_hex_val"
-    )]
-    pub extra_data: Uint256,
+    pub difficulty: Option<Uint256>,
+    #[serde(rename = "extraData")]
+    pub extra_data: Option<String>,
     #[serde(rename = "gasLimit")]
     pub gas_limit: Uint256,
     #[serde(rename = "gasUsed")]
@@ -351,13 +342,10 @@ pub struct ConciseBlock {
 /// Xdai block with more concise tx hashes instead of full transactions
 #[derive(Serialize, Debug, Deserialize, Clone, PartialEq, Eq)]
 pub struct ConciseXdaiBlock {
-    pub author: Address,
-    pub difficulty: Uint256,
-    #[serde(
-        rename = "extraData",
-        deserialize_with = "parse_possibly_empty_hex_val"
-    )]
-    pub extra_data: Uint256,
+    pub author: Option<Address>,
+    pub difficulty: Option<Uint256>,
+    #[serde(rename = "extraData")]
+    pub extra_data: Option<String>,
     #[serde(rename = "gasLimit")]
     pub gas_limit: Uint256,
     #[serde(rename = "gasUsed")]
@@ -376,14 +364,14 @@ pub struct ConciseXdaiBlock {
     #[serde(rename = "receiptsRoot")]
     pub receipts_root: Uint256,
     #[serde(rename = "sealFields")]
-    pub seal_fields: Vec<String>,
+    pub seal_fields: Option<Vec<String>>,
     #[serde(rename = "sha3Uncles")]
     pub sha3_uncles: Uint256,
-    pub signature: String,
+    pub signature: Option<String>,
     pub size: Uint256,
     #[serde(rename = "stateRoot")]
     pub state_root: Uint256,
-    pub step: Uint256,
+    pub step: Option<Uint256>,
     pub timestamp: Uint256,
     #[serde(rename = "totalDifficulty")]
     pub total_difficulty: Uint256,
@@ -402,17 +390,6 @@ pub enum SendTxOption {
     GasLimit(Uint256),
     NetworkId(u64),
     Nonce(Uint256),
-}
-
-fn parse_possibly_empty_hex_val<'de, D>(deserializer: D) -> Result<Uint256, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let s: String = String::deserialize(deserializer)?;
-    match Uint256::from_dec_or_hex_str_restricted(&s) {
-        Ok(val) => Ok(val),
-        Err(_) => Ok(u256!(0)),
-    }
 }
 
 /// This enum encapsulates the syncing status returned by a call to eth_syncing
@@ -441,6 +418,7 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_arbitrary_block() {
+        use clarity::u256;
         env_logger::init();
 
         let web3 = Web3::new("https://eth.althea.net", Duration::from_secs(5));

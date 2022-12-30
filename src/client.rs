@@ -739,40 +739,11 @@ impl Web3 {
         Ok(SimulatedGas { limit, price })
     }
 
-    /// Navigates the block request process to properly identify the base fee no matter
-    /// what network (xDai or ETH) is being used. Returns `None` if a pre-London fork
-    /// network is in use and `Some(base_fee_per_gas)` if a post London network is in
-    /// use
     async fn get_base_fee_per_gas(&self) -> Result<Option<Uint256>, Web3Error> {
-        let eth = self.eth_get_latest_block().await;
-        let xdai = self.xdai_get_latest_block().await;
-        // we don't know what network we're on, so we request both blocks and
-        // see which one succeeds. This could in theory be removed if we
-        // combine the eth and xdai blocks or require some sort of flag on init
-        // for the web30 struct
-        match (eth, xdai) {
-            // this case is confusing, I'm pretty sure, but not 100% sure that
-            // it's impossible. That being said we better handle it just to be safe
-            // if we have some polyglot block that is interpretable through both types
-            // this entire section contains a lot of guesswork for cases that will probably
-            // never happen
-            (Ok(eth_block), Ok(xdai_block)) => {
-                warn!("Found polyglot blocks! {:?} {:?}", eth_block, xdai_block);
-                match (eth_block.base_fee_per_gas, xdai_block.base_fee_per_gas) {
-                    // polyglot block, these values should be identical, but take the max
-                    (Some(base_gas_a), Some(base_gas_b)) => Ok(Some(max(base_gas_a, base_gas_b))),
-                    // this is event more crazy than a polyglot block, the field name is the same
-                    // nevertheless we should take the value that exists
-                    (Some(base_gas), None) | (None, Some(base_gas)) => Ok(Some(base_gas)),
-
-                    (None, None) => Ok(None),
-                }
-            }
-            (Err(_), Ok(block)) => Ok(block.base_fee_per_gas),
-            (Ok(block), Err(_)) => Ok(block.base_fee_per_gas),
-            // if both error it's probably the same error so lets pick the first
-            // and return it
-            (Err(e), Err(_)) => Err(e),
+        if cfg!(feature = "use_xdai_blocks") {
+            Ok(self.xdai_get_latest_block().await?.base_fee_per_gas)
+        } else {
+            Ok(self.eth_get_latest_block().await?.base_fee_per_gas)
         }
     }
 
